@@ -1,16 +1,17 @@
 import streamlit as st
-from langchain_community.vectorstores import FAISS  # Correct import for FAISS
-from langchain_ollama import OllamaLLM  # Correct import for Ollama
-from langchain.chains import RetrievalQA
+from langchain_community.vectorstores import FAISS  # Updated import for FAISS
+from langchain_ollama import OllamaLLM  # Updated import for Ollama
+from langchain.chains.llm import LLMChain
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-from langchain.memory import ConversationBufferMemory  # Correct memory import
+from langchain.chains import RetrievalQA
+from langchain_community.embeddings import OllamaEmbeddings
 import pickle
 import os
+from streamlit_chat import message
 
 # Load and display the uploaded image at the top of the page
 logo_path = 'Image/digitallogo.jpg'
-st.image(logo_path, width=150)
+st.image(logo_path, width=150)  # Adjust the width as per your requirement
 
 # Set up Streamlit interface
 st.title("Askari HR Assistant")
@@ -19,79 +20,109 @@ st.title("Askari HR Assistant")
 prompt_template = """
 You are a friendly senior Human Resource(HR) personnel. 
 You will be given a question from an employee regarding their queries related to HR-Policies. 
-Your task is to understand the employee's question first thoroughly, then based on the context provided to you, 
-answer the employee in 3-4 concise sentences. 
-If you don't know the answer to the employee's question, say "I don't know the answer to your question, 
+Your Task is to understand the employee's question first thoroughly then based on the context provided to you, 
+you need to answer to the employee. Make sure your answer conveys a clear, concise, and limited to 3-4 sentences 
+response to the user question. If you don't know the answer to employee's question, you will say "I don't know the answer to your question, 
 Please contact the focal HR personnel in your department."
+
+Here is how you will operate:
 
 Context: {context}
 Question: {question}
-Your Helpful Answer:
-"""
+Your Helpful Answer:  """
 
 # Define the path to the FAISS index and the embedding config file
 faiss_index_path = 'Data/faiss_index'
-embedding_config_path = 'Data/embedding_config.pkl'
+embedding_config_path = 'Data/embedding_config_nomic.pkl'
 
-# Load embedding configuration from the saved pickle file
-if os.path.exists(embedding_config_path):
+@st.cache_resource
+def load_embeddings():
     with open(embedding_config_path, 'rb') as f:
         embedding_config = pickle.load(f)
-
-    # Initialize the embeddings based on the saved configuration
-    embeddings = HuggingFaceBgeEmbeddings(
-        model_name=embedding_config["model_name"],
-        model_kwargs=embedding_config["model_kwargs"],
-        encode_kwargs=embedding_config["encode_kwargs"]
+    embeddings = OllamaEmbeddings(
+        model=embedding_config["model"]
     )
+    return embeddings
 
-    # Load the FAISS index from disk
+@st.cache_resource
+def load_faiss_index(_embeddings):
     if os.path.exists(faiss_index_path):
         db = FAISS.load_local(
             folder_path=faiss_index_path,
-            embeddings=embeddings,
+            embeddings=_embeddings,
             allow_dangerous_deserialization=True
         )
-        st.write("Welcome to Askari Bank Personal Assistant")
-
-        # Create a retriever with FAISS
-        retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
-
-        # Create the chat prompt
-        chat_prompt = ChatPromptTemplate.from_template(prompt_template)
-
-        # Initialize the OllamaLLM model
-        model = OllamaLLM(model="llama3.2")
-
-        # Add memory to keep track of conversation history
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-
-        # Set up the RetrievalQA chain with memory
-        retrievalQA = RetrievalQA.from_chain_type(
-            llm=model,
-            chain_type="stuff",
-            retriever=retriever,
-            return_source_documents=False,  # Disable returning source documents to simplify the output
-            chain_type_kwargs={"prompt": chat_prompt},
-            memory=memory,
-            output_key="result"  # Ensure the key to be stored in memory is the 'result'
-        )
-
-        # User input for query
-        user_query = st.text_input("Enter your HR-related question:")
-
-        if st.button("Get Answer"):
-            # Get the answer from the retrieval QA chain, including memory of previous chats
-            answer = retrievalQA.invoke({"query": user_query})
-
-            # Display the query and the result
-            st.write("Query:", user_query)
-            st.write("Answer:", answer['result'])
-
-            # Display the conversation history (messages tracked in memory)
-            st.write("Conversation History:", memory.load_memory_variables({})["chat_history"])
-
+        return db
     else:
         st.error("FAISS index not found. Please check the path.")
-else:
-    st.error("Embedding configuration not found. Please check the path to 'embedding_config.pkl'.")
+        return None
+
+@st.cache_resource
+def llm_pipeline():
+    return OllamaLLM(model="llama3.2")
+
+@st.cache_resource
+def qa_llm():
+    embeddings = load_embeddings()
+    db = load_faiss_index(embeddings)
+    if db is not None:
+        retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+        chat_prompt = ChatPromptTemplate.from_template(prompt_template)
+        llm = llm_pipeline()
+        qa = RetrievalQA.from_chain_type(
+            llm=llm,
+            chain_type="stuff",
+            retriever=retriever,
+            return_source_documents=True,
+            chain_type_kwargs={"prompt": chat_prompt}
+        )
+        return qa
+    else:
+        return None
+
+# Display conversation history using Streamlit messages
+def display_conversation(history):
+    for i in range(len(history["generated"])):
+        message(history["past"][i], is_user=True, key=str(i) + "_user")
+        message(history["generated"][i], key=str(i))
+
+def process_answer(query):
+    qa = qa_llm()
+    if qa is not None:
+        try:
+            answer = qa.invoke({"query": query})
+            return answer['result']
+        except AssertionError as e:
+            st.error(f"AssertionError: {str(e)}")
+            return "An error occurred due to a dimensionality mismatch. Please check the FAISS index and embedding configurations."
+        except Exception as e:
+            st.error(f"Unexpected error: {str(e)}")
+            return "An unexpected error occurred. Please try again later."
+    else:
+        return "I'm unable to retrieve an answer at the moment."
+
+def main():
+    st.write("Welcome to Askari Bank Personal Assistant")
+
+    # Initialize session state for generated responses and past messages
+    if "generated" not in st.session_state:
+        st.session_state["generated"] = ["I am ready to help you"]
+    if "past" not in st.session_state:
+        st.session_state["past"] = ["Hey there!"]
+
+    # User input for query
+    user_query = st.text_input("Enter your HR-related question:", key="input")
+
+    if st.button("Get Answer"):
+        response = process_answer(user_query)
+
+        # Update session state
+        st.session_state["past"].append(user_query)
+        st.session_state["generated"].append(response)
+
+    # Display conversation history using Streamlit messages
+    if st.session_state["generated"]:
+        display_conversation(st.session_state)
+
+if __name__ == '__main__':
+    main()
