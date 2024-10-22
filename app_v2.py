@@ -5,7 +5,7 @@ from langchain_ollama import OllamaLLM  # Updated import for Ollama
 from langchain.chains.llm import LLMChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import RetrievalQA
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings  # Updated import to avoid deprecation warning
 import pickle
 import os
 
@@ -46,9 +46,7 @@ embedding_config_path = 'Data/embedding_config_nomic.pkl'
 def load_embeddings():
     with open(embedding_config_path, 'rb') as f:
         embedding_config = pickle.load(f)
-    embeddings = OllamaEmbeddings(
-        model=embedding_config["model"]
-    )
+    embeddings = OllamaEmbeddings(model=embedding_config["model"])  # Updated to use the correct import
     return embeddings
 
 @st.cache_resource
@@ -105,7 +103,7 @@ def process_answer(query):
                 history_messages = st.session_state["messages"][-10:]  # Get the last 5 user-assistant pairs
                 history = "\n".join([f"User: {msg['content']}\nAssistant: {ans['content']}" for msg, ans in zip(history_messages[::2], history_messages[1::2]) if msg["role"] == "user" and ans["role"] == "assistant"])
             else:
-                history = ""
+                history = "No previous conversation history available."
             context = "Relevant HR context here"  # Replace with actual context if available
             prompt = prompt_template.format(context=context, history=history, question=query)
             answer = qa.invoke({"query": prompt})
