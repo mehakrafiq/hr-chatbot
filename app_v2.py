@@ -101,7 +101,11 @@ def process_answer(query):
     if qa is not None:
         try:
             # Build the context and history for the prompt
-            history = "\n".join([f"User: {msg['content']}\nAssistant: {ans['content']}" for msg, ans in zip(st.session_state["messages"], st.session_state["messages"][1:]) if msg["role"] == "user" and ans["role"] == "assistant"])
+            if len(st.session_state["messages"]) > 1:
+                history_messages = st.session_state["messages"][-10:]  # Get the last 5 user-assistant pairs
+                history = "\n".join([f"User: {msg['content']}\nAssistant: {ans['content']}" for msg, ans in zip(history_messages[::2], history_messages[1::2]) if msg["role"] == "user" and ans["role"] == "assistant"])
+            else:
+                history = ""
             context = "Relevant HR context here"  # Replace with actual context if available
             prompt = prompt_template.format(context=context, history=history, question=query)
             answer = qa.invoke({"query": prompt})
