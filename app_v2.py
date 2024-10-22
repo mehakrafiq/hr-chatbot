@@ -9,12 +9,10 @@ import pickle
 import os
 from streamlit_chat import message
 
-
-st.set_page_config(layout="wide")
-
 # Load and display the uploaded image at the top of the page
-logo_path = 'Image/human-resources.jpg'
-st.image(logo_path, width=150)  # Adjust the width as per your requirement
+logo_path = 'Image/digitallogo.jpg'
+st.image(logo_path, width=150)
+
 
 # Set up Streamlit interface
 st.title("Askari HR Assistant")
@@ -87,8 +85,8 @@ def qa_llm():
 def display_conversation(history):
     for i in range(len(history["generated"])):
         if i < len(history["past"]):
-            message(history["past"][i], is_user=True, key=str(i) + "_user")
-        message(history["generated"][i], key=str(i))
+            st.chat_message(name="user", avatar="👤").markdown(history["past"][i])
+        st.chat_message(name="assistant", avatar="👩🏻‍💻").markdown(history["generated"][i])
 
 def process_answer(query):
     qa = qa_llm()
