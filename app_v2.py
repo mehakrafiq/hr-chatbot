@@ -5,19 +5,23 @@ from langchain_ollama import OllamaLLM  # Updated import for Ollama
 from langchain.chains.llm import LLMChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import RetrievalQA
-from langchain_ollama import OllamaEmbeddings  # Updated import to avoid deprecation warning
+from langchain_community.embeddings import OllamaEmbeddings
 import pickle
 import os
 
+
 # Load and display the uploaded image at the top of the page
 
-#st.set_page_config(layout="wide")
+st.set_page_config(layout="wide")
 
-logo_path = 'Image/askari_digital_transparent.png'
+
+logo_path = 'Image/digitallogo.jpg'
 with st.sidebar:
-    st.image(logo_path, width=200)
+    st.image(logo_path, width=150)
     st.markdown("### Askari Digital HR Assistant")
     st.markdown("Welcome to Askari Bank Personal Assistant - developed by DBD team.")
+
+
 
 # Set up Streamlit interface
 st.title("Askari HR Assistant")
@@ -45,7 +49,9 @@ embedding_config_path = 'Data/embedding_config_nomic.pkl'
 def load_embeddings():
     with open(embedding_config_path, 'rb') as f:
         embedding_config = pickle.load(f)
-    embeddings = OllamaEmbeddings(model=embedding_config["model"])  # Updated to use the correct import
+    embeddings = OllamaEmbeddings(
+        model=embedding_config["model"]
+    )
     return embeddings
 
 @st.cache_resource
@@ -85,26 +91,19 @@ def qa_llm():
         return None
 
 # Display conversation history using Streamlit messages
-def display_conversation():
-    for message in st.session_state["messages"]:
-        if message["role"] == "user":
-            st.chat_message("user", avatar="🧑‍💼").markdown(message["content"])
-        else:
-            st.chat_message("assistant", avatar="👩🏻‍💻").markdown(message["content"])
+def display_conversation(history):
+    for i in range(len(history["generated"])):
+        if i < len(history["past"]):
+            st.chat_message("user", avatar="🧑‍💼").markdown(history["past"][i])
+        if i < len(history["generated"]):
+            st.chat_message("assistant", avatar="👩🏻‍💻").markdown(history["generated"][i])
 
 
 def process_answer(query):
     qa = qa_llm()
     if qa is not None:
         try:
-            # Build the context including the conversation history
-            history = ""
-            if len(st.session_state["messages"]) > 1:
-                history_messages = st.session_state["messages"][-10:]  # Get the last 5 user-assistant pairs
-                history = "\n".join([f"User: {msg['content']}\nAssistant: {ans['content']}" for msg, ans in zip(history_messages[::2], history_messages[1::2]) if msg["role"] == "user" and ans["role"] == "assistant"])
-            context = f"Relevant HR context here.\n\n{history}"
-            prompt = prompt_template.format(context=context, question=query)
-            answer = qa.invoke(query=prompt)
+            answer = qa.invoke({"query": query})
             return answer['result']
         except AssertionError as e:
             st.error(f"AssertionError: {str(e)}")
@@ -124,28 +123,28 @@ def main():
     st.write("Welcome to Askari Bank Personal Assistant")
 
     # Initialize session state for generated responses and past messages
-    if "messages" not in st.session_state:
-        st.session_state["messages"] = []
+    if "generated" not in st.session_state:
+        st.session_state["generated"] = []
+    if "past" not in st.session_state:
+        st.session_state["past"] = []
 
     # Display conversation history first
-    if st.session_state["messages"]:
-        display_conversation()
+    if st.session_state["generated"]:
+        display_conversation(st.session_state)
 
     # User input for query below the conversation history
     user_query = st.chat_input("Enter your HR-related question:")
 
-    # Validate user input to prevent empty queries
-    if user_query and user_query.strip():
-        # Append user's input to session state and display immediately
-        st.session_state["messages"].append({"role": "user", "content": user_query})
-        st.chat_message("user", avatar="🧑‍💼").markdown(user_query)
-
-        # Process the answer
+    if user_query:
+        st.session_state['input_submitted'] = False
         response = process_answer(user_query)
 
-        # Append assistant's response to session state and display
-        st.session_state["messages"].append({"role": "assistant", "content": response})
-        st.chat_message("assistant", avatar="👩🏻‍💻").markdown(response)
+        # Update session state
+        st.session_state["past"].append(user_query)
+        st.session_state["generated"].append(response)
+
+        # Re-display conversation after getting a new response
+        display_conversation(st.session_state)
 
 if __name__ == '__main__':
     main()
