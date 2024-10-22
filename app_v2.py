@@ -1,5 +1,5 @@
 import streamlit as st
-st.set_page_config(layout="wide", page_title="Askari HR Assistant")
+from streamlit_chat import message
 from langchain_community.vectorstores import FAISS  # Updated import for FAISS
 from langchain_ollama import OllamaLLM  # Updated import for Ollama
 from langchain.chains.llm import LLMChain
@@ -8,7 +8,12 @@ from langchain.chains import RetrievalQA
 from langchain_community.embeddings import OllamaEmbeddings
 import pickle
 import os
-from streamlit_chat import message
+
+
+
+# Display of the page 
+st.set_page_config(layout="wide", page_title="Askari HR Assistant")
+
 
 # Load and display the uploaded image at the top of the page
 logo_path = 'Image/digitallogo.jpg'
@@ -91,12 +96,9 @@ def qa_llm():
 # Display conversation history using Streamlit messages
 def display_conversation(history):
     for i in range(len(history["generated"])):
-        cols = st.columns([2, 8]) if i < len(history["past"]) else st.columns([8, 2])
-        with cols[1] if i < len(history["past"]) else cols[0]:
-            if i < len(history["past"]):
-                st.markdown(f'<div style="text-align: right;">{history["past"][i]}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div style="text-align: left;">{history["generated"][i]}</div>', unsafe_allow_html=True)
+        if i < len(history["past"]):
+            message(history["past"][i], is_user=True, key=str(i) + "_user", avatar="🧑‍💼")
+        message(history["generated"][i], key=str(i), avatar="👩🏻‍💻")
 
 def process_answer(query):
     qa = qa_llm()
@@ -131,9 +133,9 @@ def main():
         display_conversation(st.session_state)
 
     # User input for query below the conversation history
-    user_query = st.text_input("Enter your HR-related question:", key="input", on_change=lambda: st.session_state.submit_input())
+    user_query = st.chat_input("Enter your HR-related question:")
 
-    if user_query and st.session_state.get('input_submitted', False) or st.button("Get Answer"):
+    if user_query:
         st.session_state['input_submitted'] = False
         response = process_answer(user_query)
 
