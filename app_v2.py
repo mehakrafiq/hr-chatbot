@@ -101,14 +101,10 @@ def process_answer(query):
     if qa is not None:
         try:
             # Build the context and history for the prompt
-            history = "\n".join([f"User: {msg['content']}\nAssistant: {ans['content']}" for msg, ans in zip(st.session_state["messages"], st.session_state["messages"]) if msg["role"] == "user" and ans["role"] == "assistant"])
+            history = "\n".join([f"User: {msg['content']}\nAssistant: {ans['content']}" for msg, ans in zip(st.session_state["messages"], st.session_state["messages"][1:]) if msg["role"] == "user" and ans["role"] == "assistant"])
             context = "Relevant HR context here"  # Replace with actual context if available
-            formatted_query = {
-                "context": context,
-                "history": history,
-                "question": query
-            }
-            answer = qa.invoke(formatted_query)
+            prompt = prompt_template.format(context=context, history=history, question=query)
+            answer = qa.invoke({"query": prompt})
             return answer['result']
         except AssertionError as e:
             st.error(f"AssertionError: {str(e)}")
