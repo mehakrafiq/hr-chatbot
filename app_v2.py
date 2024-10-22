@@ -10,20 +10,17 @@ import pickle
 import os
 
 
-
-# Display of the page 
-st.set_page_config(layout="wide", page_title="Askari HR Assistant")
-
-
 # Load and display the uploaded image at the top of the page
+
+st.set_page_config(layout="wide")
+
+
 logo_path = 'Image/digitallogo.jpg'
 with st.sidebar:
     st.image(logo_path, width=150)
     st.markdown("### Askari Digital HR Assistant")
-    st.markdown("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla at nibh non nisl fermentum efficitur.")
+    st.markdown("Welcome to Askari Bank Personal Assistant - developed by DBD team.")
 
-# Center the welcome message
-st.markdown("<h3 style='text-align: center;'>Welcome to Askari Bank Personal Assistant</h3>", unsafe_allow_html=True)
 
 
 # Set up Streamlit interface
@@ -97,8 +94,10 @@ def qa_llm():
 def display_conversation(history):
     for i in range(len(history["generated"])):
         if i < len(history["past"]):
-            message(history["past"][i], is_user=True, key=str(i) + "_user", avatar="🧑‍💼")
-        message(history["generated"][i], key=str(i), avatar="👩🏻‍💻")
+            st.chat_message("user", avatar="🧑‍💼").markdown(history["past"][i])
+        if i < len(history["generated"]):
+            st.chat_message("assistant", avatar="👩🏻‍💻").markdown(history["generated"][i])
+
 
 def process_answer(query):
     qa = qa_llm()
@@ -115,6 +114,7 @@ def process_answer(query):
     else:
         return "I'm unable to retrieve an answer at the moment."
 
+
 def submit_input():
     st.session_state['input_submitted'] = True
 
@@ -124,7 +124,7 @@ def main():
 
     # Initialize session state for generated responses and past messages
     if "generated" not in st.session_state:
-        st.session_state["generated"] = ["Hello, I am Romaza, your friendly HR assistant"]
+        st.session_state["generated"] = []
     if "past" not in st.session_state:
         st.session_state["past"] = []
 
