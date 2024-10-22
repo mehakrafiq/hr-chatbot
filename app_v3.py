@@ -42,8 +42,8 @@ Question: {question}
 Your Helpful Answer:  """
 
 # Define the path to the FAISS index and the embedding config file
-faiss_index_path = 'Data/faiss_index'
-embedding_config_path = 'Data/embedding_config_nomic.pkl'
+faiss_index_path = 'db/faiss_index'
+embedding_config_path = 'db/embedding_config_nomic.pkl'
 
 @st.cache_resource
 def load_embeddings():
@@ -94,7 +94,7 @@ def display_conversation():
         if message["role"] == "user":
             st.chat_message("user", avatar="🧑‍💼").markdown(message["content"])
         else:
-            st.chat_message("assistant", avatar="👩🏻‍💻").markdown(message["content"])
+            st.chat_message("assistant", avatar="👩🏻‍🏠").markdown(message["content"])
 
 
 def process_answer(query):
@@ -117,7 +117,8 @@ def process_answer(query):
                 if sources:
                     source_links = "\n\n**Sources:**\n"
                     for i, source in enumerate(sources):
-                        source_links += f"[{source.metadata['name'] if 'name' in source.metadata else 'Document'}](Docs/HRPoliciesAndServiceRules.pdf)\n"
+                        page_number = source.metadata.get("page_number", "unknown")
+                        source_links += f"[{i + 1}](file:///Users/mehak/Downloads/test-chatbot/Docs/HRPoliciesAndServiceRules.pdf#page={page_number})\n"
                     response_text += source_links
 
             return response_text
@@ -159,7 +160,7 @@ def main():
 
         # Append assistant's response to session state and display
         st.session_state["messages"].append({"role": "assistant", "content": response})
-        st.chat_message("assistant", avatar="👩🏻‍💻").markdown(response)
+        st.chat_message("assistant", avatar="👩🏻‍🏠").markdown(response)
 
 if __name__ == '__main__':
     main()

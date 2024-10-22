@@ -1,10 +1,13 @@
-from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_ollama import OllamaEmbeddings  # Updated import to align with Askari HR Chat App
+from langchain.document_loaders import PyPDFDirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import OllamaEmbeddings  # Updated import to align with Askari HR Chat App
 from langchain_community.vectorstores import FAISS
+import pdfplumber
+import json
 import pickle
 import re
 import logging
+import os
 
 import warnings
 
@@ -15,13 +18,38 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 pdf_loader = PyPDFDirectoryLoader('Docs/')
 pdfs = pdf_loader.load()
 
-# Text Cleaning Function
+# Extract tables and save to JSON
+def extract_tables_to_json(pdf_files, output_folder="db/json_tables"):
+    os.makedirs(output_folder, exist_ok=True)
+    for i, pdf_file in enumerate(pdf_files):
+        pdf_path = pdf_file.metadata.get('source', None)
+        if pdf_path:
+            with pdfplumber.open(pdf_path) as pdf:
+                all_tables = []
+                for page_number, page in enumerate(pdf.pages):
+                    tables = page.extract_tables()
+                    for table in tables:
+                        all_tables.append({
+                            "page_number": page_number + 1,
+                            "table": table,
+                            "type": "table"  # Adding metadata to identify as table
+                        })
+                # Save tables to a JSON file
+                if all_tables:
+                    json_filename = os.path.join(output_folder, f"document_{i}_tables.json")
+                    with open(json_filename, 'w') as json_file:
+                        json.dump(all_tables, json_file)
+                    logging.info(f"Extracted tables from document {i} and saved to {json_filename}")
+
+# Call the function to extract tables
+extract_tables_to_json(pdfs)
+
+# Text Cleaning Function (for non-tabular data)
 def clean_text(page_content):
     page = page_content
     page = re.sub(r'([\n]+)([0-9]+)', '', page)
     page = re.sub(r'([0-9]+) [.]', '', page)
-    page = re.sub(r'([\n]+)', '', page)
-    page = page.replace('•', '')
+    # Retain newlines for better structure preservation
     page = re.sub(' +', ' ', page)
     page = page.replace('"', '')
     if page and page[0].isdigit():
@@ -51,7 +79,7 @@ embedding_config = {
 }
 
 # Save the configuration to a pickle file
-with open('Data/embedding_config_nomic.pkl', 'wb') as f:
+with open('db/embedding_config_nomic.pkl', 'wb') as f:
     pickle.dump(embedding_config, f)
 
 logging.info("Embedding configuration for nomic-embed-text saved.")
@@ -70,5 +98,5 @@ for doc, chunk in zip(pdfs, document_chunks):
 db.index.ntotal 
 
 # Save the db to disk
-db.save_local('Data/faiss_index')
+db.save_local('db/faiss_index')
 logging.info(f"FAISS index saved to disk. Total number of documents indexed: {db.index.ntotal}")
