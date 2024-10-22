@@ -1,4 +1,5 @@
 import streamlit as st
+st.set_page_config(layout="wide", page_title="Askari HR Assistant")
 from langchain_community.vectorstores import FAISS  # Updated import for FAISS
 from langchain_ollama import OllamaLLM  # Updated import for Ollama
 from langchain.chains.llm import LLMChain
@@ -11,7 +12,13 @@ from streamlit_chat import message
 
 # Load and display the uploaded image at the top of the page
 logo_path = 'Image/digitallogo.jpg'
-st.image(logo_path, width=150)
+with st.sidebar:
+    st.image(logo_path, width=150)
+    st.markdown("### Askari Digital HR Assistant")
+    st.markdown("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla at nibh non nisl fermentum efficitur.")
+
+# Center the welcome message
+st.markdown("<h3 style='text-align: center;'>Welcome to Askari Bank Personal Assistant</h3>", unsafe_allow_html=True)
 
 
 # Set up Streamlit interface
@@ -84,9 +91,12 @@ def qa_llm():
 # Display conversation history using Streamlit messages
 def display_conversation(history):
     for i in range(len(history["generated"])):
-        if i < len(history["past"]):
-            st.chat_message(name="user", avatar="👤").markdown(history["past"][i])
-        st.chat_message(name="assistant", avatar="👩🏻‍💻").markdown(history["generated"][i])
+        cols = st.columns([2, 8]) if i < len(history["past"]) else st.columns([8, 2])
+        with cols[1] if i < len(history["past"]) else cols[0]:
+            if i < len(history["past"]):
+                st.markdown(f'<div style="text-align: right;">{history["past"][i]}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div style="text-align: left;">{history["generated"][i]}</div>', unsafe_allow_html=True)
 
 def process_answer(query):
     qa = qa_llm()
@@ -103,7 +113,11 @@ def process_answer(query):
     else:
         return "I'm unable to retrieve an answer at the moment."
 
+def submit_input():
+    st.session_state['input_submitted'] = True
+
 def main():
+    st.session_state.submit_input = submit_input
     st.write("Welcome to Askari Bank Personal Assistant")
 
     # Initialize session state for generated responses and past messages
@@ -117,9 +131,10 @@ def main():
         display_conversation(st.session_state)
 
     # User input for query below the conversation history
-    user_query = st.text_input("Enter your HR-related question:", key="input")
+    user_query = st.text_input("Enter your HR-related question:", key="input", on_change=lambda: st.session_state.submit_input())
 
-    if st.button("Get Answer"):
+    if user_query and st.session_state.get('input_submitted', False) or st.button("Get Answer"):
+        st.session_state['input_submitted'] = False
         response = process_answer(user_query)
 
         # Update session state
