@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_chat import message
 from langchain_community.vectorstores import FAISS  # Updated import for FAISS
-from langchain_ollama import OllamaLLM  # Updated import for Ollama
+from langchain_community.embeddings import OllamaEmbeddings # Updated import for Ollama
 from langchain.chains.llm import LLMChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import RetrievalQA
@@ -94,7 +94,7 @@ def display_conversation():
         if message["role"] == "user":
             st.chat_message("user", avatar="🧑‍💼").markdown(message["content"])
         else:
-            st.chat_message("assistant", avatar="👩🏻‍🏠").markdown(message["content"])
+            st.chat_message("assistant", avatar="👩🏻‍💻").markdown(message["content"])
 
 
 def process_answer(query):
@@ -160,7 +160,7 @@ def main():
 
         # Append assistant's response to session state and display
         st.session_state["messages"].append({"role": "assistant", "content": response})
-        st.chat_message("assistant", avatar="👩🏻‍🏠").markdown(response)
+        st.chat_message("assistant", avatar="👩🏻‍💻").markdown(response)
 
 if __name__ == '__main__':
     main()
