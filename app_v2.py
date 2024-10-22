@@ -34,7 +34,6 @@ Please contact the focal HR personnel in your department."
 Here is how you will operate:
 
 Context: {context}
-History: {history}
 Question: {question}
 Your Helpful Answer:  """
 
@@ -98,14 +97,14 @@ def process_answer(query):
     qa = qa_llm()
     if qa is not None:
         try:
-            # Build the context and history for the prompt
+            # Build the context including the conversation history
             if len(st.session_state["messages"]) > 1:
                 history_messages = st.session_state["messages"][-10:]  # Get the last 5 user-assistant pairs
                 history = "\n".join([f"User: {msg['content']}\nAssistant: {ans['content']}" for msg, ans in zip(history_messages[::2], history_messages[1::2]) if msg["role"] == "user" and ans["role"] == "assistant"])
+                context = f"Relevant HR context here.\n\nConversation History:\n{history}"
             else:
-                history = "No previous conversation history available."
-            context = "Relevant HR context here"  # Replace with actual context if available
-            prompt = prompt_template.format(context=context, history=history, question=query)
+                context = "Relevant HR context here. No previous conversation history available."
+            prompt = prompt_template.format(context=context, question=query)
             answer = qa.invoke({"query": prompt})
             return answer['result']
         except AssertionError as e:
