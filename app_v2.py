@@ -9,8 +9,11 @@ import pickle
 import os
 from streamlit_chat import message
 
+
+st.set_page_config(layout="wide")
+
 # Load and display the uploaded image at the top of the page
-logo_path = 'Image/digitallogo.jpg'
+logo_path = 'Image/human-resources.jpg'
 st.image(logo_path, width=150)  # Adjust the width as per your requirement
 
 # Set up Streamlit interface
@@ -83,7 +86,8 @@ def qa_llm():
 # Display conversation history using Streamlit messages
 def display_conversation(history):
     for i in range(len(history["generated"])):
-        message(history["past"][i], is_user=True, key=str(i) + "_user")
+        if i < len(history["past"]):
+            message(history["past"][i], is_user=True, key=str(i) + "_user")
         message(history["generated"][i], key=str(i))
 
 def process_answer(query):
@@ -106,11 +110,15 @@ def main():
 
     # Initialize session state for generated responses and past messages
     if "generated" not in st.session_state:
-        st.session_state["generated"] = ["I am ready to help you"]
+        st.session_state["generated"] = ["Hello, I am Romaza, your friendly HR assistant"]
     if "past" not in st.session_state:
-        st.session_state["past"] = ["Hey there!"]
+        st.session_state["past"] = []
 
-    # User input for query
+    # Display conversation history first
+    if st.session_state["generated"]:
+        display_conversation(st.session_state)
+
+    # User input for query below the conversation history
     user_query = st.text_input("Enter your HR-related question:", key="input")
 
     if st.button("Get Answer"):
@@ -120,8 +128,7 @@ def main():
         st.session_state["past"].append(user_query)
         st.session_state["generated"].append(response)
 
-    # Display conversation history using Streamlit messages
-    if st.session_state["generated"]:
+        # Re-display conversation after getting a new response
         display_conversation(st.session_state)
 
 if __name__ == '__main__':
