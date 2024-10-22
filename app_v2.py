@@ -135,7 +135,8 @@ def main():
     # User input for query below the conversation history
     user_query = st.chat_input("Enter your HR-related question:")
 
-    if user_query:
+    # Validate user input to prevent empty queries
+    if user_query and user_query.strip():
         # Append user's input to session state and display immediately
         st.session_state["messages"].append({"role": "user", "content": user_query})
         st.chat_message("user", avatar="🧑‍💼").markdown(user_query)
