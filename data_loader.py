@@ -2,6 +2,7 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain.schema import Document
 import pdfplumber
 import json
 import pickle
@@ -23,87 +24,69 @@ def clean_text(page_content):
         page = page[1:]
     return page
 
-# Load pdfs from a directory
-pdf_loader = PyPDFDirectoryLoader('Docs/')
-pdfs = pdf_loader.load()
-
 # Extract entire PDF content and batch pages to JSON
-
-def extract_pdf_to_json(pdf_files, output_folder="db/json_files", pages_per_batch=50):
+def extract_pdf_to_json(pdf_path, output_folder="db/json_files", pages_per_batch=50):
     os.makedirs(output_folder, exist_ok=True)
-    for i, pdf_file in enumerate(pdf_files):
-        pdf_path = pdf_file.metadata.get('source', None)
-        if pdf_path:
-            with pdfplumber.open(pdf_path) as pdf:
-                pdf_content = []
-                for page_number, page in enumerate(pdf.pages):
-                    page_text = page.extract_text() or ""
-                    page_text = clean_text(page_text)
+    with pdfplumber.open(pdf_path) as pdf:
+        pdf_content = []
+        for page_number, page in enumerate(pdf.pages):
+            page_text = page.extract_text() or ""
+            page_text = clean_text(page_text)
+            pdf_content.append({
+                "page_number": page_number + 1,
+                "text": page_text,
+                "type": "text"
+            })
+            tables = page.extract_tables()
+            for table in tables:
+                if table:
                     pdf_content.append({
                         "page_number": page_number + 1,
-                        "text": page_text,
-                        "type": "text"
+                        "table": table,
+                        "type": "table"
                     })
-                    tables = page.extract_tables()
-                    for table in tables:
-                        if table:
-                            pdf_content.append({
-                                "page_number": page_number + 1,
-                                "table": table,
-                                "type": "table"
-                            })
-                    # Batch pages and save them after every `pages_per_batch` pages
-                    if (page_number + 1) % pages_per_batch == 0 or (page_number + 1) == len(pdf.pages):
-                        batch_number = page_number // pages_per_batch
-                        json_filename = os.path.join(output_folder, f"document_{i}_batch_{batch_number}.json")
-                        with open(json_filename, 'w') as json_file:
-                            json.dump(pdf_content, json_file, indent=4)
-                        logging.info(f"Extracted content from document {i} batch {batch_number} and saved to {json_filename}")
-                        pdf_content = []  # Clear content after saving
+            # Batch pages and save them after every `pages_per_batch` pages
+            if (page_number + 1) % pages_per_batch == 0 or (page_number + 1) == len(pdf.pages):
+                batch_number = page_number // pages_per_batch
+                json_filename = os.path.join(output_folder, f"document_batch_{batch_number}.json")
+                with open(json_filename, 'w') as json_file:
+                    json.dump(pdf_content, json_file, indent=4)
+                logging.info(f"Extracted content from batch {batch_number} and saved to {json_filename}")
+                pdf_content = []  # Clear content after saving
 
 # Function to continue processing from the last successful batch
-def extract_pdf_to_json_resume(pdf_files, output_folder="db/json_files", pages_per_batch=50):
+def extract_pdf_to_json_resume(pdf_path, output_folder="db/json_files", pages_per_batch=50):
     os.makedirs(output_folder, exist_ok=True)
-    existing_batches = {f.split('_batch_')[0]: int(f.split('_batch_')[1].split('.')[0]) for f in os.listdir(output_folder) if f.endswith('.json')}
-    for i, pdf_file in enumerate(pdf_files):
-        if str(i) in existing_batches:
-            last_batch = existing_batches[str(i)]
-        else:
-            last_batch = -1
-
-        pdf_path = pdf_file.metadata.get('source', None)
-        if pdf_path:
-            with pdfplumber.open(pdf_path) as pdf:
-                pdf_content = []
-                for page_number, page in enumerate(pdf.pages):
-                    batch_number = page_number // pages_per_batch
-                    if batch_number <= last_batch:
-                        continue  # Skip already processed batches
-                    page_text = page.extract_text() or ""
-                    page_text = clean_text(page_text)
+    existing_batches = {int(f.split('_batch_')[1].split('.')[0]) for f in os.listdir(output_folder) if f.endswith('.json')}
+    with pdfplumber.open(pdf_path) as pdf:
+        pdf_content = []
+        for page_number, page in enumerate(pdf.pages):
+            batch_number = page_number // pages_per_batch
+            if batch_number in existing_batches:
+                continue  # Skip already processed batches
+            page_text = page.extract_text() or ""
+            page_text = clean_text(page_text)
+            pdf_content.append({
+                "page_number": page_number + 1,
+                "text": page_text,
+                "type": "text"
+            })
+            tables = page.extract_tables()
+            for table in tables:
+                if table:
                     pdf_content.append({
                         "page_number": page_number + 1,
-                        "text": page_text,
-                        "type": "text"
+                        "table": table,
+                        "type": "table"
                     })
-                    tables = page.extract_tables()
-                    for table in tables:
-                        if table:
-                            pdf_content.append({
-                                "page_number": page_number + 1,
-                                "table": table,
-                                "type": "table"
-                            })
-                    # Batch pages and save them after every `pages_per_batch` pages
-                    if (page_number + 1) % pages_per_batch == 0 or (page_number + 1) == len(pdf.pages):
-                        batch_number = page_number // pages_per_batch
-                        json_filename = os.path.join(output_folder, f"document_{i}_batch_{batch_number}.json")
-                        with open(json_filename, 'w') as json_file:
-                            json.dump(pdf_content, json_file, indent=4)
-                        logging.info(f"Extracted content from document {i} batch {batch_number} and saved to {json_filename}")
-                        pdf_content = []  # Clear content after saving
-
-extract_pdf_to_json_resume(pdfs)
+            # Batch pages and save them after every `pages_per_batch` pages
+            if (page_number + 1) % pages_per_batch == 0 or (page_number + 1) == len(pdf.pages):
+                batch_number = page_number // pages_per_batch
+                json_filename = os.path.join(output_folder, f"document_batch_{batch_number}.json")
+                with open(json_filename, 'w') as json_file:
+                    json.dump(pdf_content, json_file, indent=4)
+                logging.info(f"Extracted content from batch {batch_number} and saved to {json_filename}")
+                pdf_content = []  # Clear content after saving
 
 # Load JSON files and prepare them for embedding
 def load_json_files(json_folder="db/json_files"):
@@ -118,19 +101,33 @@ def load_json_files(json_folder="db/json_files"):
                     current_page_number = item['page_number']
                 item['page_number'] = current_page_number
                 if item['type'] == 'text':
-                    all_chunks.append(item)
+                    # Create Document object for text content
+                    doc = Document(
+                        page_content=item['text'],
+                        metadata={"page_number": item['page_number'], "type": item['type']}
+                    )
+                    all_chunks.append(doc)
                 elif item['type'] == 'table':
                     table_text = '\n'.join(['\t'.join([str(cell) if cell is not None else '' for cell in row]) for row in item['table']])
-                    all_chunks.append({
-                        "page_number": item['page_number'],
-                        "text": table_text,
-                        "type": "table"
-                    })
+                    # Create Document object for table content
+                    doc = Document(
+                        page_content=table_text,
+                        metadata={"page_number": item['page_number'], "type": item['type']}
+                    )
+                    all_chunks.append(doc)
     return all_chunks
 
-all_chunks = load_json_files()
+# Usage
+pdf_folder = 'Docs/'
+pdf_loader = PyPDFDirectoryLoader(pdf_folder)
+pdfs = pdf_loader.load()
+for pdf_file in pdfs:
+    pdf_path = pdf_file.metadata.get('source', None)
+    if pdf_path:
+        extract_pdf_to_json_resume(pdf_path)
 
 # Split the documents into smaller chunks
+all_chunks = load_json_files()
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=500,
     chunk_overlap=100
@@ -153,7 +150,7 @@ db = FAISS.from_documents(document_chunks, embeddings)
 
 # Add metadata for page numbers
 for chunk in document_chunks:
-    chunk["page_number"] = chunk.get("page_number", "unknown")
+    chunk.metadata["page_number"] = chunk.metadata.get("page_number", "unknown")
 
 db.index.ntotal 
 
