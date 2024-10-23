@@ -27,8 +27,9 @@ def clean_text(page_content):
 pdf_loader = PyPDFDirectoryLoader('Docs/')
 pdfs = pdf_loader.load()
 
-# Extract entire PDF content and save to JSON
-def extract_pdf_to_json(pdf_files, output_folder="db/json_files"):
+# Extract entire PDF content and batch pages to JSON
+
+def extract_pdf_to_json(pdf_files, output_folder="db/json_files", pages_per_batch=50):
     os.makedirs(output_folder, exist_ok=True)
     for i, pdf_file in enumerate(pdf_files):
         pdf_path = pdf_file.metadata.get('source', None)
@@ -51,11 +52,14 @@ def extract_pdf_to_json(pdf_files, output_folder="db/json_files"):
                                 "table": table,
                                 "type": "table"
                             })
-                if pdf_content:
-                    json_filename = os.path.join(output_folder, f"document_{i}_content.json")
-                    with open(json_filename, 'w') as json_file:
-                        json.dump(pdf_content, json_file, indent=4)
-                    logging.info(f"Extracted content from document {i} and saved to {json_filename}")
+                    # Batch pages and save them after every `pages_per_batch` pages
+                    if (page_number + 1) % pages_per_batch == 0 or (page_number + 1) == len(pdf.pages):
+                        batch_number = page_number // pages_per_batch
+                        json_filename = os.path.join(output_folder, f"document_{i}_batch_{batch_number}.json")
+                        with open(json_filename, 'w') as json_file:
+                            json.dump(pdf_content, json_file, indent=4)
+                        logging.info(f"Extracted content from document {i} batch {batch_number} and saved to {json_filename}")
+                        pdf_content = []  # Clear content after saving
 
 extract_pdf_to_json(pdfs)
 
@@ -74,7 +78,7 @@ def load_json_files(json_folder="db/json_files"):
                 if item['type'] == 'text':
                     all_chunks.append(item)
                 elif item['type'] == 'table':
-                    table_text = '\n'.join(['\t'.join(row) for row in item['table']])
+                    table_text = '\n'.join(['\t'.join([str(cell) if cell is not None else '' for cell in row]) for row in item['table']])
                     all_chunks.append({
                         "page_number": item['page_number'],
                         "text": table_text,
