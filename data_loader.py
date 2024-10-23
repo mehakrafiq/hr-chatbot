@@ -61,7 +61,49 @@ def extract_pdf_to_json(pdf_files, output_folder="db/json_files", pages_per_batc
                         logging.info(f"Extracted content from document {i} batch {batch_number} and saved to {json_filename}")
                         pdf_content = []  # Clear content after saving
 
-extract_pdf_to_json(pdfs)
+# Function to continue processing from the last successful batch
+def extract_pdf_to_json_resume(pdf_files, output_folder="db/json_files", pages_per_batch=50):
+    os.makedirs(output_folder, exist_ok=True)
+    existing_batches = {f.split('_batch_')[0]: int(f.split('_batch_')[1].split('.')[0]) for f in os.listdir(output_folder) if f.endswith('.json')}
+    for i, pdf_file in enumerate(pdf_files):
+        if str(i) in existing_batches:
+            last_batch = existing_batches[str(i)]
+        else:
+            last_batch = -1
+
+        pdf_path = pdf_file.metadata.get('source', None)
+        if pdf_path:
+            with pdfplumber.open(pdf_path) as pdf:
+                pdf_content = []
+                for page_number, page in enumerate(pdf.pages):
+                    batch_number = page_number // pages_per_batch
+                    if batch_number <= last_batch:
+                        continue  # Skip already processed batches
+                    page_text = page.extract_text() or ""
+                    page_text = clean_text(page_text)
+                    pdf_content.append({
+                        "page_number": page_number + 1,
+                        "text": page_text,
+                        "type": "text"
+                    })
+                    tables = page.extract_tables()
+                    for table in tables:
+                        if table:
+                            pdf_content.append({
+                                "page_number": page_number + 1,
+                                "table": table,
+                                "type": "table"
+                            })
+                    # Batch pages and save them after every `pages_per_batch` pages
+                    if (page_number + 1) % pages_per_batch == 0 or (page_number + 1) == len(pdf.pages):
+                        batch_number = page_number // pages_per_batch
+                        json_filename = os.path.join(output_folder, f"document_{i}_batch_{batch_number}.json")
+                        with open(json_filename, 'w') as json_file:
+                            json.dump(pdf_content, json_file, indent=4)
+                        logging.info(f"Extracted content from document {i} batch {batch_number} and saved to {json_filename}")
+                        pdf_content = []  # Clear content after saving
+
+extract_pdf_to_json_resume(pdfs)
 
 # Load JSON files and prepare them for embedding
 def load_json_files(json_folder="db/json_files"):

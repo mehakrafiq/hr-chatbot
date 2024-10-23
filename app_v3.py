@@ -1,11 +1,10 @@
 import streamlit as st
 from streamlit_chat import message
-from langchain_community.vectorstores import FAISS  # Updated import for FAISS
-from langchain_community.embeddings import OllamaEmbeddings # Updated import for Ollama
-from langchain.chains.llm import LLMChain
+from langchain_community.vectorstores import FAISS 
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import RetrievalQA
-from langchain_ollama import OllamaEmbeddings  # Updated import to avoid deprecation warning
+from langchain_ollama import OllamaLLM
 import pickle
 import os
 
@@ -16,6 +15,7 @@ import os
 logo_path = 'Image/askari_digital_transparent.png'
 with st.sidebar:
     st.image(logo_path, width=200)
+    st.markdown("### ")
     st.markdown("### Askari Digital HR Assistant")
     st.markdown("Welcome to Askari Bank Personal Assistant - developed by DBD team.")
 
@@ -42,8 +42,8 @@ Question: {question}
 Your Helpful Answer:  """
 
 # Define the path to the FAISS index and the embedding config file
-faiss_index_path = 'db/faiss_index'
-embedding_config_path = 'db/embedding_config_nomic.pkl'
+faiss_index_path = 'Data/faiss_index'
+embedding_config_path = 'Data/embedding_config_nomic.pkl'
 
 @st.cache_resource
 def load_embeddings():
@@ -67,7 +67,7 @@ def load_faiss_index(_embeddings):
 
 @st.cache_resource
 def llm_pipeline():
-    return OllamaLLM(model="llama3.2")
+    return OllamaLLM(model="hrmodel")
 
 @st.cache_resource
 def qa_llm():

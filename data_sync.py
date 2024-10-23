@@ -21,7 +21,6 @@ def clean_text(page_content):
     page = re.sub(r'([\n]+)([0-9]+)', '', page)
     page = re.sub(r'([0-9]+) [.]', '', page)
     page = re.sub(r'([\n]+)', '', page)
-    page = page.replace('•', '')
     page = re.sub(' +', ' ', page)
     page = page.replace('"', '')
     if page and page[0].isdigit():
