@@ -17,14 +17,13 @@ with st.sidebar:
     st.image(logo_path, width=200)
     st.markdown("### ")
     st.markdown("### Askari Digital HR Assistant")
-    st.markdown("Welcome to Askari Bank Personal Assistant - developed by Digital Innovation Data Analytics Lab.")
+    st.markdown("Welcome to Askari Bank Personal Assistant - developed by Digital Innovation Data Analytics team.")
 
 # Set up Streamlit interface
 st.title("Askari HR Assistant")
 
-# Add disclaimer expander
-with st.expander("ℹ️ Disclaimer"):
-    st.write("This demo is designed for showcasing purposes only, specifically for our CDO demo. Please note that we are using a CPU instead of a GPU, which may affect the performance. Additionally, as with all large language models, this assistant may occasionally generate incorrect or misleading information. It is not intended for production use. Thank you for your understanding.")
+# Always visible disclaimer
+st.markdown("ℹ️ **Disclaimer**: This demo is designed for showcasing purposes only, specifically for our CDO demo. Please note that we are using a CPU instead of a GPU, which may affect the performance. Additionally, as with all large language models, this assistant may occasionally generate incorrect or misleading information. It is not intended for production use. Thank you for your understanding.")
 
 # Define the prompt template
 prompt_template = """
@@ -35,6 +34,7 @@ you need to answer to the employee. Make sure your answer conveys a clear, conci
 response to the user question. If you don't know the answer to employee's question, you will say "I don't know the answer to your question, 
 Please contact the focal HR personnel in your department."
 
+Note: You must prioritize relevant factual content from CSV files wherever possible and highlight specific data points when relevant.
 Here is how you will operate:
 
 Context: {context}
@@ -67,14 +67,14 @@ def load_faiss_index(_embeddings):
 
 @st.cache_resource
 def llm_pipeline():
-    return OllamaLLM(model="hrmodel")
+    return OllamaLLM(model="biggermistral")
 
 @st.cache_resource
 def qa_llm():
     embeddings = load_embeddings()
     db = load_faiss_index(embeddings)
     if db is not None:
-        retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+        retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 5, "scoring_function": custom_scoring_function})  # Increased k for more chunks
         chat_prompt = ChatPromptTemplate.from_template(prompt_template)
         llm = llm_pipeline()
         qa = RetrievalQA.from_chain_type(
@@ -87,6 +87,17 @@ def qa_llm():
         return qa
     else:
         return None
+
+# Define a custom scoring function to leverage the "boost" metadata
+# Also prioritize CSV content for factual responses
+
+def custom_scoring_function(chunk):
+    base_score = chunk.similarity_score  # Use similarity score as a base
+    boost_factor = chunk.metadata.get("boost", 1)  # Default boost factor is 1 if not specified
+    # Prioritize CSV content by adding a larger boost for factual data
+    if chunk.metadata.get("content_type") == "CSV":
+        boost_factor *= 2  # Multiply to significantly prioritize CSV data
+    return base_score * boost_factor
 
 # Display conversation history using Streamlit messages
 def display_conversation():
@@ -111,16 +122,7 @@ def process_answer(query):
             answer = qa.invoke(input=prompt)
             response_text = answer['result']
 
-            # Add source documents as hyperlinks
-            if 'source_documents' in answer:
-                sources = answer['source_documents']
-                if sources:
-                    source_links = "\n\n**Sources:**\n"
-                    for i, source in enumerate(sources):
-                        page_number = source.metadata.get("page_number", "unknown")
-                        source_links += f"[{i + 1}](file:///Users/mehak/Downloads/test-chatbot/Docs/HRPoliciesAndServiceRules.pdf#page={page_number})\n"
-                    response_text += source_links
-
+            
             return response_text
         except AssertionError as e:
             st.error(f"AssertionError: {str(e)}")
