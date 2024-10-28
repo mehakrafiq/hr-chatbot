@@ -1,6 +1,6 @@
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.schema import Document
 import pdfplumber
@@ -40,10 +40,13 @@ def extract_pdf_to_json(pdf_path, output_folder="db/json_files", pages_per_batch
             tables = page.extract_tables()
             for table in tables:
                 if table:
+                    headers = table[0] if table[0] else []  # Assuming first row as headers if available
+                    rows = table[1:] if len(table) > 1 else []  # Rest as rows
                     pdf_content.append({
                         "page_number": page_number + 1,
-                        "table": table,
-                        "type": "table"
+                        "type": "table",
+                        "headers": headers,
+                        "rows": rows
                     })
             # Batch pages and save them after every `pages_per_batch` pages
             if (page_number + 1) % pages_per_batch == 0 or (page_number + 1) == len(pdf.pages):
@@ -74,10 +77,13 @@ def extract_pdf_to_json_resume(pdf_path, output_folder="db/json_files", pages_pe
             tables = page.extract_tables()
             for table in tables:
                 if table:
+                    headers = table[0] if table[0] else []  # Assuming first row as headers if available
+                    rows = table[1:] if len(table) > 1 else []  # Rest as rows
                     pdf_content.append({
                         "page_number": page_number + 1,
-                        "table": table,
-                        "type": "table"
+                        "type": "table",
+                        "headers": headers,
+                        "rows": rows
                     })
             # Batch pages and save them after every `pages_per_batch` pages
             if (page_number + 1) % pages_per_batch == 0 or (page_number + 1) == len(pdf.pages):
@@ -104,15 +110,18 @@ def load_json_files(json_folder="db/json_files"):
                     # Create Document object for text content
                     doc = Document(
                         page_content=item['text'],
-                        metadata={"page_number": item['page_number'], "type": item['type']}
+                        metadata={"page_number": item['page_number'], "type": item['type'], "source": json_file}
                     )
                     all_chunks.append(doc)
                 elif item['type'] == 'table':
-                    table_text = '\n'.join(['\t'.join([str(cell) if cell is not None else '' for cell in row]) for row in item['table']])
-                    # Create Document object for table content
+                    # Create Document object for table content, keeping headers and rows structured
+                    table_content = {
+                        "headers": item.get("headers", []),
+                        "rows": item.get("rows", [])
+                    }
                     doc = Document(
-                        page_content=table_text,
-                        metadata={"page_number": item['page_number'], "type": item['type']}
+                        page_content=str(table_content),
+                        metadata={"page_number": item['page_number'], "type": item['type'], "source": json_file}
                     )
                     all_chunks.append(doc)
     return all_chunks
@@ -148,9 +157,10 @@ logging.info("Embedding configuration for nomic-embed-text saved.")
 # Get the embeddings for the document chunks
 db = FAISS.from_documents(document_chunks, embeddings)
 
-# Add metadata for page numbers
+# Add metadata for page numbers and source file name
 for chunk in document_chunks:
     chunk.metadata["page_number"] = chunk.metadata.get("page_number", "unknown")
+    chunk.metadata["source"] = chunk.metadata.get("source", "unknown")
 
 db.index.ntotal 
 
