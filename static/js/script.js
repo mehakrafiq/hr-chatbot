@@ -40,7 +40,7 @@ function sendMessage() {
 
             // Create a new message element for the bot response
             const botMessage = document.createElement('div');
-            botMessage.textContent = `Bot: ${data.response}`; // Get the response from the API
+            botMessage.textContent = `🤖: ${data.response}`; // Get the response from the API
             botMessage.classList.add('message', 'bot-message'); // Add classes for styling
 
             // Append the bot message to the chat box
@@ -55,7 +55,7 @@ function sendMessage() {
 
             // Show an error message
             const errorMessage = document.createElement('div');
-            errorMessage.textContent = "Bot: An error occurred. Please try again later.";
+            errorMessage.textContent = "🤖: An error occurred. Please try again later.";
             errorMessage.classList.add('message', 'bot-message');
             chatBox.appendChild(errorMessage);
         });
