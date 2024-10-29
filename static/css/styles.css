@@ -1,0 +1,150 @@
+/* General Styles */
+body {
+  font-family: 'Roboto', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden; /* Prevent scrolling of the body */
+}
+
+/* Full-screen video background */
+#background-video {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  transform: translate(-50%, -50%); /* Center the video */
+  z-index: -1; /* Ensure video is behind the content */
+  background: black; /* Background color behind video */
+}
+
+/* Chat container styled like a mobile device */
+.chat-container {
+  width: 375px; /* Width of a standard mobile device */
+  max-width: 100%;
+  border: none; /* Remove border for a cleaner look */
+  padding: 0; /* Remove padding for the container */
+  background-color: rgba(255, 255, 255, 0.8); /* Slightly transparent white background */
+  border-radius: 30px; /* Rounded corners for mobile look */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); /* Slightly larger shadow for depth */
+  display: flex;
+  flex-direction: column;
+  margin-top: 230px; /* Adjust margin to position the chat box appropriately */
+  overflow: hidden; /* Prevent content from spilling out */
+  z-index: 1; /* Ensure chat container stays above the video */
+}
+
+/* Chat Header */
+.chat-header {
+  text-align: center;
+  background-color: #114fcbc8;
+  padding: 10px;
+  border-radius: 30px 30px 0 0; /* Rounded top corners */
+  color: rgb(248, 248, 248);
+}
+
+/* Chat Box */
+.chat-box {
+  height: 400px; /* Increased height for more messages */
+  overflow-y: auto; /* Enable scrolling for overflow content */
+  border: none; /* Remove border for a cleaner look */
+  border-radius: 0 0 30px 30px; /* Rounded bottom corners */
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #114fcbc8; /* Consistent background color with the header */
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  text-align: left;
+  font-size: 14px;
+  color: #ffffff;
+  padding: 10px;
+  margin: 10px 0;
+  display: none; /* Hidden by default */
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Input Container */
+.input-container {
+  display: flex;
+  align-items: center;
+  padding: 10px; /* Padding for the input area */
+  background-color: #114fcbc8; /* Same color as header */
+  border-radius: 0 0 30px 30px; /* Rounded bottom corners */
+}
+
+/* User Input */
+#user-input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  outline: none;
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+/* Send Button */
+#send-btn {
+  background-color: #111acbb6;
+  border: none;
+  border-radius: 50%;
+  padding: 10px;
+  cursor: pointer;
+}
+
+#send-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+/* Message Styles */
+.message {
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 15px;
+  max-width: 75%;
+  word-wrap: break-word;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.user-message {
+  background-color: #bf5f06e7; /* Color for user messages */
+  color: white;
+  align-self: flex-end; /* Align to the right */
+  text-align: right; /* Right-align text */
+}
+
+.bot-message {
+  background-color: #eee; /* Color for bot messages */
+  color: black;
+  align-self: flex-start; /* Align to the left */
+}
+
+/* Scrollbar for Chat Box */
+.chat-box::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chat-box::-webkit-scrollbar-thumb {
+  background-color: #1133cb8a; /* Scrollbar thumb color */
+  border-radius: 5px; /* Rounded scrollbar thumb */
+}
+
+/* Fade-in Animation for Messages */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
