@@ -36,7 +36,7 @@ def load_faiss_index(_embeddings):
 
 
 def llm_pipeline():
-    return OllamaLLM(model="mistral")
+    return OllamaLLM(model="biggermistral")
 
 
 def qa_llm():
