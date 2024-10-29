@@ -63,10 +63,10 @@ You are a friendly senior Human Resource(HR) personnel.
 You will be given a question from an employee regarding their queries related to HR-Policies. 
 Your Task is to understand the employee's question first thoroughly then based on the context provided to you, 
 you need to answer to the employee. Make sure your answer conveys a clear, concise, and limited to 3-4 sentences 
-response to the user question. If you don't know the answer to employee's question, you will say "I don't know the answer to your question, 
+response to the user question. 
+If you don't know the answer to employee's question, you will say "I don't know the answer to your question, 
 Please contact the focal HR personnel in your department."
 
-Note: You must prioritize relevant factual content from CSV files wherever possible and highlight specific data points when relevant.
 Context: {context}
 Question: {question}
 Your Helpful Answer:  """
@@ -81,6 +81,7 @@ def custom_scoring_function(chunk):
     return base_score * boost_factor
 
 
+
 @app.route('/')
 def index():
     return render_template('index.html')  # Assuming index.html is your frontend
@@ -90,10 +91,10 @@ def index():
 def ask_hr():
     data = request.get_json()  # Get JSON data from the request
     user_query = data.get('query') if data else None
-    print(f"Received API request with query: {user_query}")  # Debugging statement
+    #print(f"Received API request with query: {user_query}")  # Debugging statement
     if user_query and user_query.strip():
         response = process_answer(user_query)
-        print(f"Response generated: {response}")  # Debugging line
+        #print(f"Response generated: {response}")  # Debugging line
         return jsonify({'response': response})
     else:
         return jsonify({'response': "Please provide a valid HR-related question."})
@@ -106,10 +107,10 @@ def process_answer(query):
             # Build the context including the conversation history
             context = f"Relevant HR context here."
             prompt = prompt_template.format(context=context, question=query)
-            print(f"Generated prompt: {prompt}")  # Debugging line
+            #print(f"Generated prompt: {prompt}")  # Debugging line
             answer = qa.invoke(input=prompt)
             response_text = answer['result']
-            print(f"Model answer: {response_text}")  # Debugging line
+            #print(f"Model answer: {response_text}")  # Debugging line
             return response_text
         except AssertionError as e:
             print(f"AssertionError: {e}")  # Debugging line

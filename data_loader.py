@@ -72,6 +72,7 @@ def load_csv_documents(directory):
 # Load Word and CSV documents
 word_docs = load_word_documents('Docs/')
 csv_docs = load_csv_documents('Docs/')
+logging.info(f"CSV data loaded: {len(csv_docs)} entries found.")
 
 # Combine all documents
 all_docs = pdfs + word_docs + csv_docs
