@@ -1,44 +1,28 @@
-from langchain_community.document_loaders import PyPDFDirectoryLoader
+import os
+import re
+import pickle
+import logging
+import pandas as pd
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings  
 from langchain_community.vectorstores import FAISS
-import pickle
-import logging
-import os
-import re
-import pandas as pd
-from docx import Document
-from pdfminer.high_level import extract_text
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Load PDFs from a directory, extracting text only
-def load_pdfs(directory):
-    pdf_docs = []
+# Load TXT files from a directory
+def load_txt_documents(directory):
+    txt_docs = []
     for filename in os.listdir(directory):
-        if filename.endswith(".pdf"):
-            pdf_path = os.path.join(directory, filename)
+        if filename.endswith(".txt"):
+            txt_path = os.path.join(directory, filename)
             try:
-                text = extract_text(pdf_path)
-                pdf_docs.append({"page_content": text, "metadata": {"source": filename}})
+                with open(txt_path, 'r', encoding='utf-8') as file:
+                    text = file.read()
+                txt_docs.append({"page_content": text, "metadata": {"source": filename}})
             except Exception as e:
-                logging.warning(f"Could not extract text from {filename}: {e}")
-    return pdf_docs
-
-# Load Word documents from a directory
-def load_word_documents(directory):
-    word_docs = []
-    for filename in os.listdir(directory):
-        if filename.endswith(".docx"):
-            doc_path = os.path.join(directory, filename)
-            try:
-                doc = Document(doc_path)
-                text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
-                word_docs.append({"page_content": text, "metadata": {"source": filename}})
-            except Exception as e:
-                logging.warning(f"Could not extract text from {filename}: {e}")
-    return word_docs
+                logging.warning(f"Could not load TXT {filename}: {e}")
+    return txt_docs
 
 # Load CSV files from a directory
 def load_csv_documents(directory):
@@ -58,21 +42,23 @@ def load_csv_documents(directory):
     return csv_docs
 
 # Load documents
-pdfs = load_pdfs('Docs/')
-word_docs = load_word_documents('Docs/')
+txt_docs = load_txt_documents('Docs/')
 csv_docs = load_csv_documents('Docs/')
-all_docs = pdfs + word_docs + csv_docs
+all_docs = txt_docs + csv_docs
 
-logging.info(f"Loaded {len(pdfs)} PDF documents.")
-logging.info(f"Loaded {len(word_docs)} Word documents.")
+logging.info(f"Loaded {len(txt_docs)} TXT documents.")
 logging.info(f"Loaded {len(csv_docs)} CSV documents.")
 logging.info(f"Loaded a total of {len(all_docs)} documents.")
 
 # Refined Text Cleaning Function
 def clean_text(page_content):
+    # Remove page markers, multiple newlines, extra spaces, section breaks, and other unnecessary characters
     page = re.sub(r'Page\s*\|\s*[0-9]+', '', page_content, flags=re.IGNORECASE)  # Remove page markers
-    page = re.sub(r'\n\s*\n', '\n\n', page)  # Replace multiple newlines with two newlines (user-friendly paragraphing)
-    page = re.sub(' +', ' ', page).replace('"', '').strip()  # Clean up whitespace and quotes
+    page = re.sub(r'\n+', ' ', page)  # Replace multiple newlines with a single space
+    page = re.sub(r'-{2,}', ' ', page)  # Replace section breaks or repeated dashes with a space
+    page = re.sub(r'\s+', ' ', page)  # Replace multiple spaces with a single space
+    page = re.sub(r'[\r\f\v]', '', page)  # Remove carriage returns, form feeds, vertical tabs
+    page = re.sub(' +', ' ', page).replace('"', '').strip()  # Clean up remaining whitespace and quotes
     return page[1:] if page and page[0].isdigit() else page
 
 # Clean all documents

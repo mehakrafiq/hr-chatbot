@@ -8,6 +8,8 @@ from langchain_ollama import OllamaLLM
 import pickle
 import os
 
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)  # Enable CORS to handle cross-origin requests
 
